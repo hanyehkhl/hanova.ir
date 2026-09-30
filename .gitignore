@@ -1,0 +1,18 @@
+# Secrets / real configs (use the *.example.php templates)
+config/database.php
+config/llm.php
+config/api_keys.php
+db.php
+.env
+
+# User uploads & personal data
+uploads/
+
+# Logs
+error_log
+**/error_log
+*.log
+
+# Server / local
+well-known/
+.claude/

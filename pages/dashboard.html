@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>hanova - داشبورد مدیریت</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Tahoma,Arial,sans-serif;background:#0a0a1a;color:#fff;min-height:100vh}
+
+.topbar{
+    padding:18px 30px;
+    background:linear-gradient(135deg,rgba(124,58,237,0.08),rgba(0,128,255,0.08));
+    border-bottom:1px solid rgba(255,255,255,0.08);
+    display:flex;align-items:center;justify-content:space-between;
+    backdrop-filter:blur(20px);
+}
+.topbar h1{font-size:20px;background:linear-gradient(135deg,#7c3aed,#0080ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.topbar .actions{display:flex;gap:10px}
+.topbar .actions button{
+    padding:9px 20px;border-radius:10px;border:none;cursor:pointer;
+    font-size:13px;font-family:Tahoma;transition:all 0.3s;
+}
+.btn-workspace{background:rgba(0,200,150,0.12);color:#00c896;border:1px solid rgba(0,200,150,0.25)!important}
+.btn-workspace:hover{background:rgba(0,200,150,0.22);transform:translateY(-1px)}
+.btn-logout{background:rgba(255,75,87,0.1);color:#ff4b57;border:1px solid rgba(255,75,87,0.25)!important}
+.btn-logout:hover{background:rgba(255,75,87,0.2);transform:translateY(-1px)}
+
+.container{padding:30px;max-width:1100px;margin:auto;display:flex;flex-direction:column;gap:24px}
+
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.stat-card{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:20px 24px;
+    transition:all 0.3s;
+}
+.stat-card:hover{background:rgba(255,255,255,0.06);transform:translateY(-2px)}
+.stat-card .label{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:8px}
+.stat-card .value{font-size:28px;font-weight:bold}
+.stat-card.total .value{color:#7c3aed}
+.stat-card.active .value{color:#10b981}
+.stat-card.inactive .value{color:#ff4b57}
+
+.panel{
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:14px;
+    padding:24px;
+    transition:all 0.3s;
+}
+.panel:hover{border-color:rgba(255,255,255,0.12)}
+
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.panel-header h2{font-size:16px;color:rgba(255,255,255,0.9)}
+.panel-header .badge{
+    font-size:11px;padding:4px 12px;border-radius:20px;
+    background:rgba(124,58,237,0.15);color:#a78bfa;
+}
+
+.form-row{display:flex;gap:10px;margin-bottom:0;flex-wrap:wrap}
+.form-row input{
+    flex:1;min-width:150px;
+    padding:11px 16px;
+    background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:10px;
+    color:#fff;
+    font-family:Tahoma;
+    font-size:13px;
+    transition:all 0.3s;
+    outline:none;
+}
+.form-row input:focus{border-color:rgba(124,58,237,0.5);background:rgba(255,255,255,0.08)}
+.form-row input::placeholder{color:rgba(255,255,255,0.25)}
+
+.btn-create{
+    padding:11px 24px;
+    background:linear-gradient(135deg,#7c3aed,#0080ff);
+    border:none;
+    border-radius:10px;
+    color:#fff;
+    cursor:pointer;
+    font-family:Tahoma;
+    font-size:13px;
+    transition:all 0.3s;
+    white-space:nowrap;
+}
+.btn-create:hover{opacity:0.9;transform:translateY(-1px);box-shadow:0 4px 20px rgba(124,58,237,0.3)}
+.btn-create:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+
+.table-wrapper{overflow-x:auto;margin-top:4px}
+.user-table{width:100%;border-collapse:collapse}
+.user-table th,
+.user-table td{
+    padding:14px 12px;
+    text-align:right;
+    font-size:13px;
+}
+.user-table th{
+    color:rgba(255,255,255,0.5);
+    border-bottom:1px solid rgba(255,255,255,0.1);
+    font-weight:normal;
+    font-size:12px;
+}
+.user-table td{
+    border-bottom:1px solid rgba(255,255,255,0.04);
+}
+.user-table tr{transition:all 0.2s}
+.user-table tr:hover td{background:rgba(255,255,255,0.03)}
+
+.user-avatar-small{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:32px;height:32px;border-radius:10px;
+    background:linear-gradient(135deg,#7c3aed,#0080ff);
+    font-size:13px;font-weight:bold;margin-left:10px;
+    vertical-align:middle;flex-shrink:0;
+}
+.user-info-cell{display:flex;align-items:center}
+.user-info-cell .name{font-size:13px;color:#fff}
+.user-info-cell .username{font-size:11px;color:rgba(255,255,255,0.35);margin-top:2px}
+
+.status-badge{
+    display:inline-block;padding:4px 12px;border-radius:20px;font-size:11px;cursor:pointer;
+    transition:all 0.3s;user-select:none;
+}
+.status-active{background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.25)}
+.status-active:hover{background:rgba(16,185,129,0.2)}
+.status-inactive{background:rgba(255,75,87,0.1);color:#ff4b57;border:1px solid rgba(255,75,87,0.2)}
+.status-inactive:hover{background:rgba(255,75,87,0.18)}
+
+.role-admin{
+    display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;
+    background:rgba(245,158,11,0.12);color:#f59e0b;border:1px solid rgba(245,158,11,0.25);
+}
+.role-user{
+    display:inline-block;padding:4px 10px;border-radius:20px;font-size:11px;
+    background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.08);
+}
+
+.btn-delete{
+    background:rgba(255,75,87,0.1);
+    border:1px solid rgba(255,75,87,0.25);
+    color:#ff4b57;
+    padding:6px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:12px;
+    font-family:Tahoma;
+    transition:all 0.3s;
+}
+.btn-delete:hover{background:rgba(255,75,87,0.2);transform:translateY(-1px)}
+.btn-delete:disabled{opacity:0.3;cursor:not-allowed;transform:none}
+
+.btn-password{
+    background:rgba(0,128,255,0.1);
+    border:1px solid rgba(0,128,255,0.25);
+    color:#0080ff;
+    padding:6px 14px;
+    border-radius:8px;
+    cursor:pointer;
+    font-size:12px;
+    font-family:Tahoma;
+    transition:all 0.3s;
+    margin-left:6px;
+}
+.btn-password:hover{background:rgba(0,128,255,0.2);transform:translateY(-1px)}
+
+.actions-cell{display:flex;gap:6px;flex-wrap:nowrap}
+
+.empty-state{text-align:center;padding:40px;color:rgba(255,255,255,0.3);font-size:13px}
+
+.toast{
+    position:fixed;bottom:30px;left:50%;transform:translateX(-50%) translateY(100px);
+    padding:12px 24px;border-radius:12px;font-size:13px;font-family:Tahoma;
+    z-index:9999;transition:all 0.4s;opacity:0;pointer-events:none;
+    backdrop-filter:blur(20px);
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.success{background:rgba(16,185,129,0.2);color:#10b981;border:1px solid rgba(16,185,129,0.3)}
+.toast.error{background:rgba(255,75,87,0.2);color:#ff4b57;border:1px solid rgba(255,75,87,0.3)}
+
+.modal-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);
+    display:none;align-items:center;justify-content:center;z-index:9998;
+}
+.modal-overlay.show{display:flex}
+.modal{
+    background:#14142a;border:1px solid rgba(255,255,255,0.1);border-radius:16px;
+    padding:28px;max-width:400px;width:90%;text-align:center;
+}
+.modal h3{font-size:16px;margin-bottom:10px}
+.modal p{font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:20px;line-height:1.8}
+.modal .modal-actions{display:flex;gap:10px;justify-content:center}
+.modal .modal-actions button{
+    padding:10px 24px;border-radius:10px;border:none;cursor:pointer;
+    font-size:13px;font-family:Tahoma;transition:all 0.3s;
+}
+.modal .btn-confirm{background:rgba(255,75,87,0.2);color:#ff4b57;border:1px solid rgba(255,75,87,0.3)!important}
+.modal .btn-confirm:hover{background:rgba(255,75,87,0.35)}
+.modal .btn-cancel{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.1)!important}
+.modal .btn-cancel:hover{background:rgba(255,255,255,0.12)}
+
+.modal input{
+    width:100%;padding:11px 16px;margin-bottom:14px;
+    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);
+    border-radius:10px;color:#fff;font-family:Tahoma;font-size:13px;outline:none;
+}
+.modal input:focus{border-color:rgba(124,58,237,0.5)}
+
+.loading-spinner{
+    display:inline-block;width:16px;height:16px;
+    border:2px solid rgba(255,255,255,0.2);border-top-color:#fff;
+    border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:768px){
+    .stats-row{grid-template-columns:1fr}
+    .form-row{flex-direction:column}
+    .form-row input{min-width:100%}
+    .topbar{padding:14px 16px}
+    .topbar h1{font-size:16px}
+    .container{padding:16px}
+}
+</style>
+</head>
+
+<body>
+
+<div class="topbar">
+    <h1>hanova Management</h1>
+    <div class="actions">
+        <button class="btn-workspace" id="goWorkspace">محیط کاری</button>
+        <button class="btn-logout" id="logoutBtn">خروج</button>
+    </div>
+</div>
+
+<div class="container">
+
+    <div class="stats-row">
+        <div class="stat-card total">
+            <div class="label">کل کاربران</div>
+            <div class="value" id="statTotal">-</div>
+        </div>
+        <div class="stat-card active">
+            <div class="label">کاربران فعال</div>
+            <div class="value" id="statActive">-</div>
+        </div>
+        <div class="stat-card inactive">
+            <div class="label">کاربران غیرفعال</div>
+            <div class="value" id="statInactive">-</div>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>ایجاد کاربر جدید</h2>
+        </div>
+        <div class="form-row">
+            <input id="newUsername" placeholder="نام کاربری" autocomplete="off">
+            <input id="newPassword" placeholder="رمز عبور" type="password" autocomplete="new-password">
+            <input id="newDisplay" placeholder="نام نمایشی" autocomplete="off">
+            <button class="btn-create" id="createUserBtn">ایجاد</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-header">
+            <h2>لیست کاربران</h2>
+            <span class="badge" id="userCountBadge">0 کاربر</span>
+        </div>
+        <div class="table-wrapper">
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>کاربر</th>
+                        <th>نام کاربری</th>
+                        <th>نقش</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ عضویت</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
+                <tbody id="userTableBody">
+                    <tr><td colspan="6" class="empty-state">در حال بارگذاری...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<div class="modal-overlay" id="deleteModal">
+    <div class="modal">
+        <h3>حذف کاربر</h3>
+        <p id="deleteModalText">آیا از حذف این کاربر اطمینان دارید؟ تمام پیام‌ها و اطلاعات مرتبط با این کاربر حذف خواهد شد.</p>
+        <div class="modal-actions">
+            <button class="btn-confirm" id="confirmDeleteBtn">حذف کن</button>
+            <button class="btn-cancel" id="cancelDeleteBtn">انصراف</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal">
+        <h3>تغییر رمز عبور</h3>
+        <input id="newPassInput" type="password" placeholder="رمز عبور جدید">
+        <div class="modal-actions">
+            <button class="btn-confirm" id="confirmPassBtn" style="background:rgba(0,128,255,0.2);color:#0080ff;border-color:rgba(0,128,255,0.3)!important">ذخیره</button>
+            <button class="btn-cancel" id="cancelPassBtn">انصراف</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+
+    let allUsers = [];
+    let deleteTargetId = null;
+    let passTargetId = null;
+
+    // === Toast ===
+    function showToast(msg, type){
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.className = 'toast ' + type + ' show';
+        setTimeout(()=>{ t.classList.remove('show'); }, 3000);
+    }
+
+    // === Auth Check ===
+    async function checkAdmin(){
+        try{
+            const res = await fetch('/api/auth/check.php',{credentials:'include'});
+            const data = await res.json();
+            if(!data.success || !data.logged_in || !data.user.is_admin){
+                window.location.href = '/chat';
+                return false;
+            }
+            return true;
+        }catch(e){
+            window.location.href = '/chat';
+            return false;
+        }
+    }
+
+    // === Load Users ===
+    async function loadUsers(){
+        try{
+            const res = await fetch('/api/users/list.php',{credentials:'include'});
+            const data = await res.json();
+
+            if(!data.success){
+                showToast(data.message || 'خطا در دریافت لیست','error');
+                return;
+            }
+
+            allUsers = data.users || [];
+            renderUsers();
+            updateStats();
+        }catch(e){
+            showToast('خطا در اتصال به سرور','error');
+        }
+    }
+
+    // === Render Users Table ===
+    function renderUsers(){
+        const tbody = document.getElementById('userTableBody');
+        document.getElementById('userCountBadge').textContent = allUsers.length + ' کاربر';
+
+        if(allUsers.length === 0){
+            tbody.innerHTML = '<tr><td colspan="6" class="empty-state">هیچ کاربری یافت نشد</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+
+        allUsers.forEach(function(user){
+            const tr = document.createElement('tr');
+            const isAdmin = (user.username === 'admin');
+            const isActive = parseInt(user.is_active) === 1;
+            const firstChar = (user.display_name || user.username).charAt(0);
+
+            tr.innerHTML =
+                '<td>' +
+                    '<div class="user-info-cell">' +
+                        '<div class="user-avatar-small">' + escapeHtml(firstChar) + '</div>' +
+                        '<div><div class="name">' + escapeHtml(user.display_name || '-') + '</div></div>' +
+                    '</div>' +
+                '</td>' +
+                '<td style="color:rgba(255,255,255,0.6)">' + escapeHtml(user.username) + '</td>' +
+                '<td>' + (isAdmin ? '<span class="role-admin">مدیر</span>' : '<span class="role-user">کاربر</span>') + '</td>' +
+                '<td>' +
+                    '<span class="status-badge ' + (isActive ? 'status-active' : 'status-inactive') + '" ' +
+                    (isAdmin ? '' : 'onclick="toggleUser(' + user.id + ',' + (isActive?0:1) + ')"') + '>' +
+                    (isActive ? 'فعال' : 'غیرفعال') +
+                    '</span>' +
+                '</td>' +
+                '<td style="color:rgba(255,255,255,0.35);font-size:12px">' + (user.created_at || '-') + '</td>' +
+                '<td>' +
+                    '<div class="actions-cell">' +
+                        '<button class="btn-password" onclick="openPassModal(' + user.id + ')">رمز</button>' +
+                        (isAdmin ? '' : '<button class="btn-delete" onclick="openDeleteModal(' + user.id + ',\'' + escapeHtml(user.display_name) + '\')">حذف</button>') +
+                    '</div>' +
+                '</td>';
+
+            tbody.appendChild(tr);
+        });
+    }
+
+    // === Update Stats ===
+    function updateStats(){
+        const total = allUsers.length;
+        const active = allUsers.filter(u => parseInt(u.is_active) === 1).length;
+        const inactive = total - active;
+        document.getElementById('statTotal').textContent = total;
+        document.getElementById('statActive').textContent = active;
+        document.getElementById('statInactive').textContent = inactive;
+    }
+
+    // === Create User ===
+    async function createUser(){
+        const username = document.getElementById('newUsername').value.trim();
+        const password = document.getElementById('newPassword').value.trim();
+        const display = document.getElementById('newDisplay').value.trim();
+
+        if(!username || !password || !display){
+            showToast('تمام فیلدها الزامی است','error');
+            return;
+        }
+
+        const btn = document.getElementById('createUserBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span>';
+
+        try{
+            const res = await fetch('/api/users/add.php',{
+                method:'POST',
+                credentials:'include',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({username, password, display_name:display})
+            });
+            const data = await res.json();
+
+            if(data.success){
+                showToast(data.message || 'کاربر ایجاد شد','success');
+                document.getElementById('newUsername').value = '';
+                document.getElementById('newPassword').value = '';
+                document.getElementById('newDisplay').value = '';
+                loadUsers();
+            }else{
+                showToast(data.message || 'خطا','error');
+            }
+        }catch(e){
+            showToast('خطا در اتصال','error');
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'ایجاد';
+    }
+
+    // === Toggle User Status ===
+    window.toggleUser = async function(id, newStatus){
+        try{
+            const res = await fetch('/api/users/toggle.php',{
+                method:'POST',
+                credentials:'include',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({id, is_active:newStatus})
+            });
+            const data = await res.json();
+            if(data.success){
+                showToast('وضعیت تغییر کرد','success');
+                loadUsers();
+            }else{
+                showToast(data.message || 'خطا','error');
+            }
+        }catch(e){
+            showToast('خطا در اتصال','error');
+        }
+    };
+
+    // === Delete Modal ===
+    window.openDeleteModal = function(id, name){
+        deleteTargetId = id;
+        document.getElementById('deleteModalText').textContent =
+            'آیا از حذف کاربر "' + name + '" اطمینان دارید؟ تمام پیام‌ها و اطلاعات مرتبط حذف خواهد شد.';
+        document.getElementById('deleteModal').classList.add('show');
+    };
+
+    document.getElementById('cancelDeleteBtn').addEventListener('click', function(){
+        deleteTargetId = null;
+        document.getElementById('deleteModal').classList.remove('show');
+    });
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', async function(){
+        if(!deleteTargetId) return;
+        const btn = this;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="loading-spinner"></span>';
+
+        try{
+            const res = await fetch('/api/users/delete.php',{
+                method:'POST',
+                credentials:'include',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({id:deleteTargetId})
+            });
+            const data = await res.json();
+            if(data.success){
+                showToast('کاربر حذف شد','success');
+                loadUsers();
+            }else{
+                showToast(data.message || 'خطا در حذف','error');
+            }
+        }catch(e){
+            showToast('خطا در اتصال','error');
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'حذف کن';
+        deleteTargetId = null;
+        document.getElementById('deleteModal').classList.remove('show');
+    });
+
+    // === Password Modal ===
+    window.openPassModal = function(id){
+        passTargetId = id;
+        document.getElementById('newPassInput').value = '';
+        document.getElementById('passwordModal').classList.add('show');
+    };
+
+    document.getElementById('cancelPassBtn').addEventListener('click', function(){
+        passTargetId = null;
+        document.getElementById('passwordModal').classList.remove('show');
+    });
+
+    document.getElementById('confirmPassBtn').addEventListener('click', async function(){
+        const newPass = document.getElementById('newPassInput').value.trim();
+        if(!newPass || !passTargetId){
+            showToast('رمز عبور را وارد کنید','error');
+            return;
+        }
+
+        try{
+            const res = await fetch('/api/users/update_password.php',{
+                method:'POST',
+                credentials:'include',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({id:passTargetId, password:newPass})
+            });
+            const data = await res.json();
+            if(data.success){
+                showToast('رمز عبور تغییر کرد','success');
+            }else{
+                showToast(data.message || 'خطا','error');
+            }
+        }catch(e){
+            showToast('خطا در اتصال','error');
+        }
+
+        passTargetId = null;
+        document.getElementById('passwordModal').classList.remove('show');
+    });
+
+    // === Close modals on overlay click ===
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay){
+        overlay.addEventListener('click', function(e){
+            if(e.target === overlay) overlay.classList.remove('show');
+        });
+    });
+
+    // === Navigation ===
+    document.getElementById('goWorkspace').addEventListener('click', function(){
+        window.location.href = '/workspace';
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', async function(){
+        await fetch('/api/auth/logout.php',{credentials:'include'});
+        window.location.href = '/chat';
+    });
+
+    document.getElementById('createUserBtn').addEventListener('click', createUser);
+
+    // === Enter key for create form ===
+    ['newUsername','newPassword','newDisplay'].forEach(function(id){
+        document.getElementById(id).addEventListener('keydown', function(e){
+            if(e.key === 'Enter') createUser();
+        });
+    });
+
+    // === Escape HTML ===
+    function escapeHtml(str){
+        if(!str) return '';
+        const d = document.createElement('div');
+        d.textContent = str;
+        return d.innerHTML;
+    }
+
+    // === Init ===
+    checkAdmin().then(function(ok){
+        if(ok) loadUsers();
+    });
+
+})();
+</script>
+</body>
+</html>
+

@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>آپلود فایل</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:Tahoma,Arial,sans-serif;
+  background:#f4efe7;
+  color:#22223b;
+}
+
+.wrap{
+  max-width:760px;
+  margin:50px auto;
+  padding:24px;
+}
+
+.box{
+  background:#fffdf9;
+  border:2px dashed #dccbb5;
+  border-radius:28px;
+  padding:38px;
+  text-align:center;
+  box-shadow:0 18px 44px rgba(52,46,38,.08);
+}
+
+h1{margin-top:0}
+
+.back-link{
+  display:inline-flex;
+  margin-bottom:18px;
+  color:#9a3412;
+  font-weight:700;
+  text-decoration:none;
+}
+
+.drop{
+  padding:45px 20px;
+  border-radius:24px;
+  background:#fbf6ee;
+  border:1px solid #dccbb5;
+  cursor:pointer;
+  display:block;
+}
+
+.drop.drag{
+  background:#eff6ff;
+  border-color:#1d4ed8;
+}
+
+input{
+  display:none;
+}
+
+button{
+  margin-top:18px;
+  padding:14px 22px;
+  border:0;
+  border-radius:16px;
+  background:#0f766e;
+  color:white;
+  font-weight:700;
+  cursor:pointer;
+}
+
+button:disabled{
+  opacity:.6;
+  cursor:not-allowed;
+}
+
+.status{
+  margin-top:18px;
+  font-size:14px;
+}
+
+.error{
+  color:#b91c1c;
+}
+
+.progress{
+  height:12px;
+  background:#eee;
+  border-radius:999px;
+  overflow:hidden;
+  margin-top:18px;
+}
+
+.bar{
+  height:100%;
+  width:0%;
+  background:#0f766e;
+  transition:width 0.2s;
+}
+
+.result-box{
+  margin-top:18px;
+  padding:16px;
+  border-radius:16px;
+  background:#102820;
+  border:1px solid #0f766e;
+  color:#fff;
+}
+
+.link-row{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:10px;
+  direction:ltr;
+}
+
+.download-link{
+  color:#5eead4;
+  font-weight:700;
+  word-break:break-all;
+}
+
+.copy-btn{
+  margin-top:0;
+  padding:8px 12px;
+  border-radius:12px;
+  background:#0f766e;
+  color:white;
+  border:0;
+  cursor:pointer;
+  font-weight:700;
+}
+
+.copy-msg{
+  margin-top:10px;
+  color:#5eead4;
+  font-size:13px;
+}
+</style>
+</head>
+
+<body>
+<div class="wrap">
+  <div class="box">
+    <a class="back-link" href="/">بازگشت به صفحه اصلی</a>
+
+    <h1>بارگذاری فایل</h1>
+
+    <p>
+      این صفحه فقط برای آپلود فایل است. بدون نیاز به لاگین، فایل خود را تا سقف ۱ گیگابایت ارسال کنید.
+    </p>
+
+    <form id="uploadForm" action="/api/dropbox/upload.php" method="POST" enctype="multipart/form-data">
+      <label class="drop" id="dropArea" for="fileInput">
+        فایل را اینجا بکشید یا کلیک کنید
+      </label>
+
+      <input id="fileInput" name="upload_file" type="file">
+
+      <div id="fileName" class="status"></div>
+
+      <div class="progress">
+        <div class="bar" id="bar"></div>
+      </div>
+
+      <button id="submitBtn" type="submit">ارسال فایل</button>
+
+      <div id="status" class="status"></div>
+    </form>
+  </div>
+</div>
+
+<script>
+const form = document.getElementById('uploadForm');
+const input = document.getElementById('fileInput');
+const statusBox = document.getElementById('status');
+const fileName = document.getElementById('fileName');
+const btn = document.getElementById('submitBtn');
+const bar = document.getElementById('bar');
+const dropArea = document.getElementById('dropArea');
+
+let droppedFile = null;
+
+input.addEventListener('change', function() {
+  if (input.files[0]) {
+    droppedFile = null;
+    fileName.textContent = input.files[0].name;
+    statusBox.textContent = '';
+    statusBox.className = 'status';
+  }
+});
+
+dropArea.addEventListener('dragover', function(e) {
+  e.preventDefault();
+  dropArea.classList.add('drag');
+});
+
+dropArea.addEventListener('dragleave', function() {
+  dropArea.classList.remove('drag');
+});
+
+dropArea.addEventListener('drop', function(e) {
+  e.preventDefault();
+  dropArea.classList.remove('drag');
+
+  const files = e.dataTransfer.files;
+
+  if (files[0]) {
+    droppedFile = files[0];
+    fileName.textContent = droppedFile.name;
+    statusBox.textContent = '';
+    statusBox.className = 'status';
+  }
+});
+
+form.addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const selectedFile = droppedFile || input.files[0];
+
+  if (!selectedFile) {
+    statusBox.textContent = 'لطفا یک فایل انتخاب کنید.';
+    statusBox.className = 'status error';
+    return;
+  }
+
+  const maxSize = 1024 * 1024 * 1024;
+
+  if (selectedFile.size > maxSize) {
+    statusBox.textContent = 'حجم فایل بیشتر از ۱ گیگابایت است.';
+    statusBox.className = 'status error';
+    return;
+  }
+
+  const data = new FormData();
+  data.append('upload_file', selectedFile);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', form.getAttribute('action'));
+
+  btn.disabled = true;
+  bar.style.width = '0%';
+  statusBox.textContent = 'در حال ارسال...';
+  statusBox.className = 'status';
+
+  xhr.upload.onprogress = function(e) {
+    if (e.lengthComputable) {
+      const percent = Math.round((e.loaded / e.total) * 100);
+      bar.style.width = percent + '%';
+      statusBox.textContent = percent + '% ارسال شد';
+    }
+  };
+
+  xhr.onload = function() {
+    btn.disabled = false;
+
+    try {
+      const res = JSON.parse(xhr.responseText);
+
+      if (res.success) {
+        showSuccessBox(res.message, res.url);
+
+        form.reset();
+        droppedFile = null;
+        fileName.textContent = '';
+        bar.style.width = '0%';
+
+      } else {
+        statusBox.textContent = res.message || 'خطا در آپلود فایل';
+        statusBox.className = 'status error';
+      }
+
+    } catch(err) {
+      console.log(xhr.responseText);
+      statusBox.textContent = 'پاسخ سرور نامعتبر است.';
+      statusBox.className = 'status error';
+    }
+  };
+
+  xhr.onerror = function() {
+    btn.disabled = false;
+    statusBox.textContent = 'خطا در ارسال فایل.';
+    statusBox.className = 'status error';
+  };
+
+  xhr.send(data);
+});
+
+function showSuccessBox(message, url) {
+  statusBox.className = 'status';
+  statusBox.innerHTML = '';
+
+  const resultBox = document.createElement('div');
+  resultBox.className = 'result-box';
+
+  const messageEl = document.createElement('div');
+  messageEl.textContent = message || 'فایل با موفقیت بارگذاری شد';
+
+  const titleEl = document.createElement('div');
+  titleEl.textContent = 'لینک دانلود:';
+  titleEl.style.marginTop = '12px';
+
+  const actionRow = document.createElement('div');
+  actionRow.className = 'link-row';
+
+  const downloadLink = document.createElement('a');
+  downloadLink.className = 'download-link';
+  downloadLink.href = url;
+  downloadLink.target = '_blank';
+  downloadLink.setAttribute('download', '');
+  downloadLink.textContent = '⬇️ دانلود فایل';
+
+  const copyButton = document.createElement('button');
+  copyButton.type = 'button';
+  copyButton.className = 'copy-btn';
+  copyButton.textContent = '📋 کپی لینک';
+
+  actionRow.appendChild(downloadLink);
+  actionRow.appendChild(copyButton);
+
+  const urlRow = document.createElement('div');
+  urlRow.className = 'link-row';
+
+  const urlLink = document.createElement('a');
+  urlLink.className = 'download-link';
+  urlLink.href = url;
+  urlLink.target = '_blank';
+  urlLink.textContent = url;
+
+  urlRow.appendChild(urlLink);
+
+  const copyMsg = document.createElement('div');
+  copyMsg.className = 'copy-msg';
+
+  copyButton.addEventListener('click', async function() {
+    try {
+      await navigator.clipboard.writeText(url);
+      copyMsg.textContent = 'لینک کپی شد ✅';
+    } catch (error) {
+      copyMsg.textContent = 'کپی خودکار انجام نشد، لینک را دستی کپی کنید.';
+    }
+  });
+
+  resultBox.appendChild(messageEl);
+  resultBox.appendChild(titleEl);
+  resultBox.appendChild(actionRow);
+  resultBox.appendChild(urlRow);
+  resultBox.appendChild(copyMsg);
+
+  statusBox.appendChild(resultBox);
+}
+</script>
+</body>
+</html>
